@@ -21,9 +21,13 @@ def get_generator(answer_format="source-quotes-v1"):
 
 if "documents" not in st.session_state:
     st.session_state.documents = CloudSession()
-    st.session_state.documents.load_samples()
     st.session_state.messages = []
     st.session_state.upload_version = 0
+    try:
+        with st.spinner("Preparing semantic search… The first start downloads a small embedding model."):
+            st.session_state.documents.load_samples()
+    except (ValueError, RuntimeError) as exc:
+        st.error(str(exc))
 
 session = st.session_state.documents
 
@@ -63,7 +67,8 @@ with st.sidebar:
     if st.button("Index selected files", disabled=not files, use_container_width=True):
         for uploaded in files:
             try:
-                result = session.ingest(uploaded.name, uploaded.getvalue())
+                with st.spinner("Creating vectors and indexing your document…"):
+                    result = session.ingest(uploaded.name, uploaded.getvalue())
                 st.success(f"{result['filename']}: {result['chunks']} passages ({result['status']}).")
                 if result["replaced"]:
                     st.session_state.messages = []
@@ -76,19 +81,23 @@ with st.sidebar:
         with st.expander(document["filename"]):
             st.caption(f"{document['chunks']} searchable passages")
             if st.button("Remove", key=f"remove_{document['document_id']}"):
-                session.engine.delete_document(document["document_id"])
-                st.session_state.messages = []
-                st.rerun()
+                try:
+                    session.engine.delete_document(document["document_id"])
+                    st.session_state.messages = []
+                    st.rerun()
+                except RuntimeError as exc:
+                    st.error(str(exc))
     if st.button("Load sample policies", use_container_width=True,
                  help="Reload the sample policies and start a fresh chat."):
         # Reloading can replace a custom file with a bundled sample's filename.
         # Clear old answers even if a later file in the batch cannot be loaded.
         st.session_state.messages = []
         try:
-            session.load_samples()
+            with st.spinner("Adding sample policies to the vector database…"):
+                session.load_samples()
             st.session_state.samples_reloaded = True
             st.rerun()
-        except ValueError as exc:
+        except (ValueError, RuntimeError) as exc:
             st.error(str(exc))
     if st.button("Clear documents and chat", use_container_width=True):
         session.close()
@@ -99,7 +108,7 @@ with st.sidebar:
     st.divider()
     st.caption("Documents and chat are temporary: refreshing, disconnecting or restarting may clear them.")
 
-st.caption("DOCUMENTS → RETRIEVAL → AI SELECTION → SOURCE QUOTES")
+st.caption("DOCUMENTS → EMBEDDINGS → QDRANT SEARCH → SOURCE QUOTES")
 st.title("Ask your cloud documents")
 st.write("Explore backup, access, scaling and incident policies with answers you can check against the source.")
 left, middle, right = st.columns(3)
@@ -107,14 +116,20 @@ health = session.engine.health()
 left.metric("Documents in this session", health["documents"])
 middle.metric("Searchable passages", health["chunks"])
 right.metric("Answer mode", "AI-selected quotes" if generate_ai else "Sources only")
+st.caption(f"Vector database: Qdrant · {health['vectors']} stored vectors · "
+           f"{health['embedding_dimensions']} dimensions · BGE-small embeddings")
 
 with st.expander("How this project works"):
     st.write("1. Documents are split into short passages.\n\n"
-             "2. TF-IDF word matching retrieves passages related to your question.\n\n"
-             "3. A small Qwen language model selects text relevant to your question.\n\n"
+             "2. BGE-small turns each passage and your question into 384 numbers called an embedding. "
+             "Qdrant compares these vectors using cosine similarity to find related passages, even when wording differs.\n\n"
+             "3. With AI selection enabled, a small Qwen language model selects text relevant to your question.\n\n"
              "4. The app matches each selection to the supplied text, expands it to its original sentence, "
              "and adds the matching source reference.\n\n"
              "5. Unmatched selections are withheld; the retrieved passages remain available.")
+    st.write("Each browser session has a separate Qdrant database in memory. Removing a document also removes "
+             "its vectors. This free demonstration does not keep documents after the session ends or the app restarts. "
+             "The embedding model is downloaded once (about 67 MB); questions and documents are processed on this app's server.")
     st.info("The included policies are fictional teaching examples. This app does not configure cloud infrastructure. "
             "Exact text matching checks where a quote came from. The model can still select irrelevant text "
             "or miss part of an answer. Verify relevance and completeness against the evidence. "
