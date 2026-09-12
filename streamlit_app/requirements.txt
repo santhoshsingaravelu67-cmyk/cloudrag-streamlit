@@ -5,6 +5,10 @@ pyarrow==24.0.0
 pypdf==6.18.1
 httpx==0.28.1
 certifi==2026.7.22
+qdrant-client==1.19.0
+fastembed==0.8.0
+onnxruntime==1.24.3
+huggingface-hub==1.31.0
 # The official Linux CPU wheel avoids compiling C++ on the free host.
 llama-cpp-python @ https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.32/llama_cpp_python-0.3.32-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl ; sys_platform == 'linux' and platform_machine == 'x86_64'
 # Other platforms build the same release from the official PyPI source.
