@@ -1,5 +1,7 @@
 # This file is selected by Community Cloud because it is beside app.py.
 streamlit==1.63.0
+# Match the safe version selected by Community Cloud during the verified build.
+pyarrow==24.0.0
 pypdf==6.18.1
 httpx==0.28.1
 certifi==2026.7.22

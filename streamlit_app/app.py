@@ -52,6 +52,8 @@ with st.sidebar:
     generate_ai = st.toggle("Generate AI answers", value=True, key="generate_ai")
     st.caption("The first AI question downloads a 491 MB model. Later questions reuse it. No API key is required.")
     st.subheader("Your documents")
+    if st.session_state.pop("samples_reloaded", False):
+        st.info("Sample policies were reloaded. Previous chat was cleared to use the current documents.")
     st.caption("Each browser session has its own collection. Upload non-sensitive learning material.")
     files = st.file_uploader("Add PDF, TXT or Markdown", type=["pdf", "txt", "md"],
                              accept_multiple_files=True, key=f"uploads_{st.session_state.upload_version}")
@@ -60,6 +62,9 @@ with st.sidebar:
             try:
                 result = session.ingest(uploaded.name, uploaded.getvalue())
                 st.success(f"{result['filename']}: {result['chunks']} passages ({result['status']}).")
+                if result["replaced"]:
+                    st.session_state.messages = []
+                    st.info("This document was replaced. Previous chat was cleared so answers do not refer to its old version.")
             except (ValueError, RuntimeError) as exc:
                 st.error(str(exc))
     st.caption("Up to 2 MiB per file, 10 documents and 100 passages. Scanned PDFs need text recognition first.")
@@ -71,9 +76,14 @@ with st.sidebar:
                 session.engine.delete_document(document["document_id"])
                 st.session_state.messages = []
                 st.rerun()
-    if st.button("Load sample policies", use_container_width=True):
+    if st.button("Load sample policies", use_container_width=True,
+                 help="Reload the sample policies and start a fresh chat."):
+        # Reloading can replace a custom file with a bundled sample's filename.
+        # Clear old answers even if a later file in the batch cannot be loaded.
+        st.session_state.messages = []
         try:
             session.load_samples()
+            st.session_state.samples_reloaded = True
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
