@@ -1,5 +1,6 @@
 """A separate, temporary document index for each Streamlit browser session."""
 
+import hashlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import perf_counter
@@ -27,6 +28,11 @@ class CloudSession:
         if len(content) > MAX_UPLOAD_BYTES:
             raise ValueError("Choose a document smaller than 2 MiB for this free demonstration.")
         filename = self.engine._validate_upload(filename, content)
+        content_hash = hashlib.sha256(content).hexdigest()
+        with self.engine._connect() as connection:
+            unchanged = self.engine._unchanged(connection, filename, content_hash)
+            if unchanged:
+                return dict(unchanged, replaced=False)
         documents = self.engine.list_documents()
         existing = next((doc for doc in documents if doc["filename"] == filename), None)
         if not existing and len(documents) >= MAX_DOCUMENTS:
@@ -36,7 +42,8 @@ class CloudSession:
         replaced_chunks = existing["chunks"] if existing else 0
         if current_chunks - replaced_chunks + len(incoming) > MAX_SESSION_CHUNKS:
             raise ValueError("This free demonstration holds 100 text passages per session. Use a shorter document.")
-        return self.engine.ingest(filename, content)
+        result = self.engine.ingest(filename, content)
+        return dict(result, replaced=existing is not None and result["status"] == "indexed")
 
     def load_samples(self):
         for path in sorted(SAMPLE_DIR.glob("*.md")):
