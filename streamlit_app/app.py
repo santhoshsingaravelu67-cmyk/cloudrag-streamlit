@@ -14,7 +14,7 @@ st.set_page_config(page_title="CloudRAG | Ask your documents", page_icon="☁️
 
 
 @st.cache_resource(show_spinner=False)
-def get_generator():
+def get_generator(answer_format="source-quotes-v1"):
     from cloudrag.cloud_model import load_generator
     return load_generator()
 
@@ -31,11 +31,14 @@ session = st.session_state.documents
 def show_answer(result):
     labels = {
         "generated": "AI answer · Qwen2.5 0.5B",
+        "quoted_evidence": "AI-selected source quotes · references checked against the text",
         "retrieved_excerpts": "Source passages · no AI generation",
         "insufficient_evidence": "Not enough evidence",
     }
     st.caption(labels[result["answer_kind"]])
     st.text(result["answer"])
+    if result["answer_kind"] == "quoted_evidence":
+        st.caption("These words come from the cited passages. Check whether they fully answer your question.")
     if result.get("warning"):
         st.warning(result["warning"])
     for source in result["sources"]:
@@ -49,7 +52,7 @@ def show_answer(result):
 with st.sidebar:
     st.title("☁️ CloudRAG")
     st.caption("A cloud architecture learning project")
-    generate_ai = st.toggle("Generate AI answers", value=True, key="generate_ai")
+    generate_ai = st.toggle("Use AI to select source quotes", value=True, key="generate_ai")
     st.caption("The first AI question downloads a 491 MB model. Later questions reuse it. No API key is required.")
     st.subheader("Your documents")
     if st.session_state.pop("samples_reloaded", False):
@@ -96,22 +99,25 @@ with st.sidebar:
     st.divider()
     st.caption("Documents and chat are temporary: refreshing, disconnecting or restarting may clear them.")
 
-st.caption("DOCUMENTS → RETRIEVAL → AI ANSWER → SOURCES")
+st.caption("DOCUMENTS → RETRIEVAL → AI SELECTION → SOURCE QUOTES")
 st.title("Ask your cloud documents")
 st.write("Explore backup, access, scaling and incident policies with answers you can check against the source.")
 left, middle, right = st.columns(3)
 health = session.engine.health()
 left.metric("Documents in this session", health["documents"])
 middle.metric("Searchable passages", health["chunks"])
-right.metric("Answer mode", "AI + sources" if generate_ai else "Sources only")
+right.metric("Answer mode", "AI-selected quotes" if generate_ai else "Sources only")
 
 with st.expander("How this project works"):
     st.write("1. Documents are split into short passages.\n\n"
              "2. TF-IDF word matching retrieves passages related to your question.\n\n"
-             "3. A small Qwen language model writes an answer using those passages.\n\n"
-             "4. You open the cited passages to check the answer.")
+             "3. A small Qwen language model selects text relevant to your question.\n\n"
+             "4. The app matches each selection to the supplied text, expands it to its original sentence, "
+             "and adds the matching source reference.\n\n"
+             "5. Unmatched selections are withheld; the retrieved passages remain available.")
     st.info("The included policies are fictional teaching examples. This app does not configure cloud infrastructure. "
-            "The lightweight model can make mistakes; verify its answer against the evidence. "
+            "Exact text matching checks where a quote came from. The model can still select irrelevant text "
+            "or miss part of an answer. Verify relevance and completeness against the evidence. "
             "Ask each question in full—previous chat messages are displayed but are not sent to the model.")
 
 st.caption("Try: How often are backups taken? · Do administrators need MFA? · Who acts as incident lead?")
