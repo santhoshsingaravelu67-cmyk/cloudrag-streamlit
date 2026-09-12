@@ -63,7 +63,7 @@ class CloudSession:
                     if answer == INSUFFICIENT_EVIDENCE:
                         result.update(answer=NO_EVIDENCE_ANSWER, answer_kind="insufficient_evidence")
                     else:
-                        result.update(answer=answer, answer_kind="generated", mode="cloud_qwen")
+                        result.update(answer=answer, answer_kind="quoted_evidence", mode="cloud_qwen_quotes")
                 except RuntimeError as exc:
                     result["warning"] = str(exc)
         result["latency_ms"] = round((perf_counter() - started) * 1000, 2)
