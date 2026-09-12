@@ -9,7 +9,7 @@ A free educational RAG app for cloud infrastructure documents. Upload text, Mark
 - Python: `3.13`
 - Secrets: none required
 
-The first AI question downloads the official Qwen2.5-0.5B-Instruct Q4_K_M model (491 MB). It runs on the host CPU through llama-cpp-python; no Ollama, Docker or paid AI API is needed. TF-IDF retrieves evidence. The app labels generated answers, source-only fallback, and insufficient evidence separately.
+The first AI question downloads the official Qwen2.5-0.5B-Instruct Q4_K_M model (491 MB). It runs on the host CPU through llama-cpp-python; no Ollama, Docker or paid AI API is needed. TF-IDF retrieves evidence. Qwen selects text, and the app matches it exactly to the supplied passages, expands it to its surrounding source sentence, and assigns the source reference. Unmatched selections are withheld. The app labels AI-selected quotes, source-only fallback, and insufficient evidence separately. This is extractive evidence selection, not a free-form AI summary.
 
 ## Try it
 
@@ -17,7 +17,7 @@ Four fictional policy documents load automatically. Ask: **How often are backups
 
 ## Limits
 
-The small model can make mistakes. Citations make checking possible but do not guarantee accuracy. Documents and chat belong to each temporary browser session; refreshing, disconnecting, sleeping or restarting can clear them. Use non-sensitive learning material. The app holds up to 10 documents, 100 passages and 2 MiB per uploaded file. It is a classroom demonstration with limited shared CPU capacity. The sample policies describe fictional infrastructure; the app does not create that infrastructure.
+Exact text matching checks copied provenance only. The small model can select irrelevant text, miss part of an answer, or fail to recognize that information is absent. Sources themselves can also be wrong. Open the passages to check relevance, context and completeness. Documents and chat belong to each temporary browser session; refreshing, disconnecting, sleeping or restarting can clear them. Use non-sensitive learning material. The app holds up to 10 documents, 100 passages and 2 MiB per uploaded file. It is a classroom demonstration with limited shared CPU capacity. The sample policies describe fictional infrastructure; the app does not create that infrastructure.
 
 ## Model attribution
 
